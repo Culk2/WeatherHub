@@ -18,7 +18,7 @@ export default function ProfilePanel({
     <section className="panel compact-panel">
       <div className="panel-head">
         <div>
-          <h3>Uporabniski profil</h3>
+          <h3>Uporabniški profil</h3>
           <p className="muted profile-copy">
             {user?.firstName ? `Pozdravljen, ${user.firstName}.` : "Profil uporabnika"}
           </p>

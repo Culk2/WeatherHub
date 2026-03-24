@@ -1,22 +1,22 @@
 const weatherCodeMap = {
   0: { label: "Jasno", icon: "☀️", tone: "sunny" },
-  1: { label: "Pretezno jasno", icon: "🌤️", tone: "sunny" },
-  2: { label: "Delno oblacno", icon: "⛅", tone: "cloudy" },
-  3: { label: "Oblacno", icon: "☁️", tone: "cloudy" },
+  1: { label: "Pretežno jasno", icon: "🌤️", tone: "sunny" },
+  2: { label: "Delno oblačno", icon: "⛅", tone: "cloudy" },
+  3: { label: "Oblačno", icon: "☁️", tone: "cloudy" },
   45: { label: "Megla", icon: "🌫️", tone: "cloudy" },
   48: { label: "Megla z ivjem", icon: "🌫️", tone: "cloudy" },
   51: { label: "Rahlo rosenje", icon: "🌦️", tone: "rainy" },
   53: { label: "Zmerno rosenje", icon: "🌦️", tone: "rainy" },
-  55: { label: "Mocno rosenje", icon: "🌧️", tone: "rainy" },
-  61: { label: "Rahel dez", icon: "🌦️", tone: "rainy" },
-  63: { label: "Zmeren dez", icon: "🌧️", tone: "rainy" },
-  65: { label: "Mocan dez", icon: "⛈️", tone: "rainy" },
+  55: { label: "Močno rosenje", icon: "🌧️", tone: "rainy" },
+  61: { label: "Rahel dež", icon: "🌦️", tone: "rainy" },
+  63: { label: "Zmeren dež", icon: "🌧️", tone: "rainy" },
+  65: { label: "Močan dež", icon: "⛈️", tone: "rainy" },
   71: { label: "Rahel sneg", icon: "🌨️", tone: "cloudy" },
   73: { label: "Zmeren sneg", icon: "🌨️", tone: "cloudy" },
-  75: { label: "Mocan sneg", icon: "❄️", tone: "cloudy" },
+  75: { label: "Močan sneg", icon: "❄️", tone: "cloudy" },
   80: { label: "Kratek naliv", icon: "🌧️", tone: "rainy" },
   81: { label: "Nalivi", icon: "⛈️", tone: "rainy" },
-  82: { label: "Mocni nalivi", icon: "⛈️", tone: "rainy" },
+  82: { label: "Močni nalivi", icon: "⛈️", tone: "rainy" },
   95: { label: "Nevihta", icon: "⛈️", tone: "rainy" }
 };
 
@@ -49,7 +49,7 @@ export async function geocodeCity(city) {
     city
   )}&count=1&language=sl&format=json`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error("Neuspesno iskanje mesta.");
+  if (!res.ok) throw new Error("Neuspešno iskanje mesta.");
   const data = await res.json();
 
   if (!data.results || data.results.length === 0) {
@@ -88,7 +88,7 @@ export async function fetchWeatherBundle({ latitude, longitude }) {
   });
 
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
-  if (!res.ok) throw new Error("Neuspesno branje vremena.");
+  if (!res.ok) throw new Error("Neuspešno branje vremena.");
   const data = await res.json();
 
   return {

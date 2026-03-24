@@ -170,7 +170,7 @@ export default function App() {
     );
 
     if (duplicate) {
-      setFavoriteAction("Ta kraj je ze med priljubljenimi.");
+      setFavoriteAction("Ta kraj je že med priljubljenimi.");
       return;
     }
 
@@ -212,7 +212,7 @@ export default function App() {
       return;
     }
 
-    setFavoriteAction("Brisem kraj...");
+    setFavoriteAction("Brišem kraj...");
 
     try {
       await sanityClient.delete(favoriteId);
@@ -258,7 +258,7 @@ export default function App() {
         <form className="header-search" onSubmit={handleSearch}>
           <input
             type="text"
-            placeholder="Poisci mesto ali obcino"
+            placeholder="Poišči mesto ali občino"
             value={searchCity}
             onChange={(event) => setSearchCity(event.target.value)}
           />
@@ -276,15 +276,14 @@ export default function App() {
         weatherMeta={weatherMeta}
       />
 
+      <ForecastPanel forecast={forecast} settings={settings} />
+
       <main className="content-grid">
         <FavoritesPanel
           favorites={favorites}
           favoritesWeather={favoritesWeather}
           onRemoveFavorite={handleRemoveFavorite}
-          onSearch={handleSearch}
-          onSearchCityChange={setSearchCity}
           onSelectFavorite={handleSelectFavorite}
-          searchCity={searchCity}
           searchResult={searchResult}
           settings={settings}
         />
@@ -297,8 +296,6 @@ export default function App() {
           user={user}
         />
       </main>
-
-      <ForecastPanel forecast={forecast} settings={settings} />
     </div>
   );
 }

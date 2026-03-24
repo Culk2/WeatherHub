@@ -33,7 +33,7 @@ export default function WeatherHero({
                 : "--°C"}
             </p>
             <p className="weather-subline">
-              Feels like:{" "}
+              Občutek:{" "}
               {currentWeather
                 ? formatTempByUnit(currentWeather.apparentTemperature, settings.units)
                 : "--"}
@@ -79,12 +79,12 @@ export default function WeatherHero({
             </button>
           </SignedIn>
           <SignedOut>
-            <p className="hint hero-hint">Prijavi se, da lahko shranjujes lokacije.</p>
+            <p className="hint hero-hint">Prijavi se, da lahko shranjuješ lokacije.</p>
           </SignedOut>
           {favoriteAction && <p className="status weather-note">{favoriteAction}</p>}
           {searchStatus === "loading" && <p className="status weather-note">Nalagam podatke...</p>}
           {searchStatus === "notfound" && (
-            <p className="status error weather-note">Lokacije nisem nasel.</p>
+            <p className="status error weather-note">Lokacije nisem našel.</p>
           )}
           {searchStatus === "error" && (
             <p className="status error weather-note">Branje vremena ni uspelo.</p>

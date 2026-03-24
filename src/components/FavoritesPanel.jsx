@@ -4,29 +4,16 @@ export default function FavoritesPanel({
   favorites,
   favoritesWeather,
   onRemoveFavorite,
-  onSearch,
-  onSearchCityChange,
   onSelectFavorite,
-  searchCity,
   searchResult,
   settings
 }) {
   return (
     <section className="panel compact-panel">
       <div className="section-head">
-        <h3>Search + Favorites</h3>
+        <h3>Priljubljena</h3>
         <span className="section-meta">{favorites.length} krajev</span>
       </div>
-
-      <form className="compact-search" onSubmit={onSearch}>
-        <input
-          type="text"
-          placeholder="Vnesi lokacijo"
-          value={searchCity}
-          onChange={(event) => onSearchCityChange(event.target.value)}
-        />
-        <button type="submit">Poisci</button>
-      </form>
 
       <div className="favorites-list">
         {favorites.length === 0 && <p className="hint">Ni shranjenih lokacij.</p>}

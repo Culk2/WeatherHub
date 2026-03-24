@@ -1,65 +1,84 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import {
+  SignInButton,
+  SignOutButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+  useUser
+} from "@clerk/clerk-react";
+import { sanityClient, sanityConfigured, sanityWriteEnabled } from "./lib/sanity";
 
-const USERS_KEY = "wh_users_v1";
-const SESSION_KEY = "wh_session_v1";
+const SETTINGS_KEY = "weatherhub_settings_v1";
 
 const weatherCodeMap = {
-  0: { label: "Jasno", icon: "☀️" },
-  1: { label: "Pretežno jasno", icon: "🌤️" },
-  2: { label: "Delno oblačno", icon: "⛅" },
-  3: { label: "Oblačno", icon: "☁️" },
-  45: { label: "Megla", icon: "🌫️" },
-  48: { label: "Zmrznjena megla", icon: "🌫️" },
-  51: { label: "Rahlo rosenje", icon: "🌦️" },
-  53: { label: "Zmerno rosenje", icon: "🌦️" },
-  55: { label: "Močno rosenje", icon: "🌧️" },
-  56: { label: "Rosenje z zmrzaljo", icon: "🌧️" },
-  57: { label: "Močno rosenje z zmrzaljo", icon: "🌧️" },
-  61: { label: "Rahel dež", icon: "🌦️" },
-  63: { label: "Zmeren dež", icon: "🌧️" },
-  65: { label: "Močan dež", icon: "🌧️" },
-  66: { label: "Dež z zmrzaljo", icon: "🌧️" },
-  67: { label: "Močan dež z zmrzaljo", icon: "🌧️" },
-  71: { label: "Rahel sneg", icon: "🌨️" },
-  73: { label: "Zmeren sneg", icon: "🌨️" },
-  75: { label: "Močan sneg", icon: "❄️" },
-  77: { label: "Snežna zrna", icon: "❄️" },
-  80: { label: "Kratek naliv", icon: "🌧️" },
-  81: { label: "Nalivi", icon: "🌧️" },
-  82: { label: "Močni nalivi", icon: "⛈️" },
-  85: { label: "Snežne plohe", icon: "🌨️" },
-  86: { label: "Močne snežne plohe", icon: "❄️" },
-  95: { label: "Nevihta", icon: "⛈️" },
-  96: { label: "Nevihta s točo", icon: "⛈️" },
-  99: { label: "Močna nevihta s točo", icon: "⛈️" }
+  0: { label: "Jasno", icon: "☀️", tone: "sunny" },
+  1: { label: "Pretezno jasno", icon: "🌤️", tone: "sunny" },
+  2: { label: "Delno oblacno", icon: "⛅", tone: "cloudy" },
+  3: { label: "Oblacno", icon: "☁️", tone: "cloudy" },
+  45: { label: "Megla", icon: "🌫️", tone: "cloudy" },
+  48: { label: "Megla z ivjem", icon: "🌫️", tone: "cloudy" },
+  51: { label: "Rahlo rosenje", icon: "🌦️", tone: "rainy" },
+  53: { label: "Zmerno rosenje", icon: "🌦️", tone: "rainy" },
+  55: { label: "Mocno rosenje", icon: "🌧️", tone: "rainy" },
+  61: { label: "Rahel dez", icon: "🌦️", tone: "rainy" },
+  63: { label: "Zmeren dez", icon: "🌧️", tone: "rainy" },
+  65: { label: "Mocan dez", icon: "⛈️", tone: "rainy" },
+  71: { label: "Rahel sneg", icon: "🌨️", tone: "cloudy" },
+  73: { label: "Zmeren sneg", icon: "🌨️", tone: "cloudy" },
+  75: { label: "Mocan sneg", icon: "❄️", tone: "cloudy" },
+  80: { label: "Kratek naliv", icon: "🌧️", tone: "rainy" },
+  81: { label: "Nalivi", icon: "⛈️", tone: "rainy" },
+  82: { label: "Mocni nalivi", icon: "⛈️", tone: "rainy" },
+  95: { label: "Nevihta", icon: "⛈️", tone: "rainy" }
 };
 
-function loadUsers() {
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY)) || [];
-  } catch {
-    return [];
+const favoriteQuery = `
+  *[_type == "favorite" && clerkUserId == $clerkUserId]
+  | order(createdAt desc) {
+    _id,
+    cityName,
+    country,
+    latitude,
+    longitude,
+    createdAt
   }
-}
+`;
 
-function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
-
-function loadSession() {
-  try {
-    return JSON.parse(localStorage.getItem(SESSION_KEY));
-  } catch {
-    return null;
-  }
-}
-
-function saveSession(session) {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-}
+const weekdayFormatter = new Intl.DateTimeFormat("sl-SI", { weekday: "short" });
 
 function weatherLabel(code) {
-  return weatherCodeMap[code] || { label: "Neznano", icon: "❔" };
+  return weatherCodeMap[code] || { label: "Neznano", icon: "❔", tone: "cloudy" };
+}
+
+function favoriteDocumentId(clerkUserId, cityName, country) {
+  return `favorite.${clerkUserId}.${cityName}.${country || "none"}`
+    .toLowerCase()
+    .replace(/[^a-z0-9.-]/g, "-");
+}
+
+function formatTemp(value) {
+  if (value == null) return "-";
+  return `${Math.round(value)}°C`;
+}
+
+function formatTempByUnit(value, unit) {
+  if (value == null) return "-";
+  if (unit === "F") {
+    return `${Math.round((value * 9) / 5 + 32)}°F`;
+  }
+  return `${Math.round(value)}°C`;
+}
+
+function formatDirection(value) {
+  if (value == null) return "-";
+  return `${Math.round(value)}°`;
+}
+
+function formatDay(date) {
+  const parts = weekdayFormatter.format(new Date(date)).replace(".", "");
+  return parts.charAt(0).toUpperCase() + parts.slice(1);
 }
 
 async function geocodeCity(city) {
@@ -67,9 +86,13 @@ async function geocodeCity(city) {
     city
   )}&count=1&language=sl&format=json`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error("Neuspešno iskanje mesta.");
+  if (!res.ok) throw new Error("Neuspesno iskanje mesta.");
   const data = await res.json();
-  if (!data.results || !data.results.length) return null;
+
+  if (!data.results || data.results.length === 0) {
+    return null;
+  }
+
   const result = data.results[0];
   return {
     name: result.name,
@@ -79,139 +102,188 @@ async function geocodeCity(city) {
   };
 }
 
-async function fetchCurrentWeather({ latitude, longitude }) {
-  const url = `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current_weather=true`;
-  const res = await fetch(url);
-  if (!res.ok) throw new Error("Neuspešno branje vremena.");
+async function fetchWeatherBundle({ latitude, longitude }) {
+  const params = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    current: [
+      "temperature_2m",
+      "apparent_temperature",
+      "weather_code",
+      "wind_speed_10m",
+      "wind_direction_10m"
+    ].join(","),
+    daily: [
+      "weather_code",
+      "temperature_2m_max",
+      "temperature_2m_min",
+      "apparent_temperature_max",
+      "apparent_temperature_min"
+    ].join(","),
+    forecast_days: "5",
+    timezone: "auto"
+  });
+
+  const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
+  if (!res.ok) throw new Error("Neuspesno branje vremena.");
   const data = await res.json();
-  return data.current_weather;
+
+  return {
+    current: {
+      time: data.current?.time,
+      temperature: data.current?.temperature_2m,
+      apparentTemperature: data.current?.apparent_temperature,
+      weatherCode: data.current?.weather_code,
+      windSpeed: data.current?.wind_speed_10m,
+      windDirection: data.current?.wind_direction_10m,
+      maxTemperature: data.daily?.temperature_2m_max?.[0],
+      minTemperature: data.daily?.temperature_2m_min?.[0]
+    },
+    forecast: (data.daily?.time || []).map((day, index) => ({
+      date: day,
+      weatherCode: data.daily.weather_code?.[index],
+      maxTemperature: data.daily.temperature_2m_max?.[index],
+      minTemperature: data.daily.temperature_2m_min?.[index]
+    }))
+  };
 }
 
-function updateUser(users, updatedUser) {
-  return users.map((user) => (user.id === updatedUser.id ? updatedUser : user));
+function WeatherIcon({ icon, tone }) {
+  return (
+    <div className={`weather-symbol weather-symbol-${tone}`}>
+      <div className="weather-symbol-shell">
+        <span className="icon-text">{icon}</span>
+      </div>
+    </div>
+  );
 }
 
-export default function App() {
-  const [users, setUsers] = useState(loadUsers);
-  const [session, setSession] = useState(loadSession);
-  const [authMode, setAuthMode] = useState("login");
-  const [authError, setAuthError] = useState("");
+function loadSettings() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(SETTINGS_KEY));
+    return {
+      units: parsed?.units || "C",
+      defaultLocationId: parsed?.defaultLocationId || "",
+      theme: parsed?.theme || "light"
+    };
+  } catch {
+    return {
+      units: "C",
+      defaultLocationId: "",
+      theme: "light"
+    };
+  }
+}
+
+function AppContent() {
+  const { user, isLoaded } = useUser();
   const [searchCity, setSearchCity] = useState("");
   const [searchResult, setSearchResult] = useState(null);
-  const [searchWeather, setSearchWeather] = useState(null);
+  const [weatherData, setWeatherData] = useState(null);
   const [searchStatus, setSearchStatus] = useState("idle");
+  const [favorites, setFavorites] = useState([]);
   const [favoritesStatus, setFavoritesStatus] = useState("idle");
   const [favoritesWeather, setFavoritesWeather] = useState({});
-
-  const activeUser = useMemo(() => {
-    if (!session) return null;
-    return users.find((user) => user.id === session.userId) || null;
-  }, [session, users]);
+  const [favoriteAction, setFavoriteAction] = useState("");
+  const [settings, setSettings] = useState(loadSettings);
 
   useEffect(() => {
-    saveUsers(users);
-  }, [users]);
+    if (!isLoaded || !user) {
+      setFavorites([]);
+      setFavoritesWeather({});
+      setFavoritesStatus("idle");
+      return;
+    }
+
+    if (!sanityConfigured || !sanityClient) {
+      setFavoritesStatus("config-error");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadFavorites() {
+      setFavoritesStatus("loading");
+      try {
+        const result = await sanityClient.fetch(favoriteQuery, {
+          clerkUserId: user.id
+        });
+
+        if (!cancelled) {
+          setFavorites(result);
+          setFavoritesStatus("ready");
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setFavoritesStatus("error");
+        }
+      }
+    }
+
+    loadFavorites();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isLoaded, user]);
 
   useEffect(() => {
-    saveSession(session);
-  }, [session]);
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    document.documentElement.dataset.theme = settings.theme;
+  }, [settings]);
 
   useEffect(() => {
-    if (!activeUser || !activeUser.favorites.length) {
+    if (!favorites.length) {
       setFavoritesWeather({});
       return;
     }
-    let canceled = false;
-    async function loadFavorites() {
-      setFavoritesStatus("loading");
-      const payload = {};
-      for (const fav of activeUser.favorites) {
+
+    let cancelled = false;
+
+    async function hydrateFavoritesWeather() {
+      const nextWeather = {};
+
+      for (const favorite of favorites) {
         try {
-          const current = await fetchCurrentWeather(fav);
-          payload[fav.name] = current;
+          const bundle = await fetchWeatherBundle(favorite);
+          nextWeather[favorite._id] = bundle.current;
         } catch {
-          payload[fav.name] = null;
+          nextWeather[favorite._id] = null;
         }
       }
-      if (!canceled) {
-        setFavoritesWeather(payload);
-        setFavoritesStatus("ready");
+
+      if (!cancelled) {
+        setFavoritesWeather(nextWeather);
       }
     }
-    loadFavorites();
+
+    hydrateFavoritesWeather();
+
     return () => {
-      canceled = true;
+      cancelled = true;
     };
-  }, [activeUser]);
+  }, [favorites]);
 
-  function handleRegister(event) {
-    event.preventDefault();
-    setAuthError("");
-    const form = new FormData(event.currentTarget);
-    const name = form.get("name").trim();
-    const email = form.get("email").trim().toLowerCase();
-    const password = form.get("password");
-
-    if (!name || !email || !password) {
-      setAuthError("Prosim izpolni vsa polja.");
+  useEffect(() => {
+    if (!settings.defaultLocationId || searchResult || !favorites.length) {
       return;
     }
 
-    if (users.some((user) => user.email === email)) {
-      setAuthError("Uporabnik s tem e-poštnim naslovom že obstaja.");
-      return;
+    const favorite = favorites.find((item) => item._id === settings.defaultLocationId);
+    if (favorite) {
+      handleSelectFavorite(favorite);
     }
+  }, [favorites, searchResult, settings.defaultLocationId]);
 
-    const newUser = {
-      id: crypto.randomUUID(),
-      name,
-      email,
-      password,
-      favorites: []
-    };
-    setUsers((prev) => [...prev, newUser]);
-    setSession({ userId: newUser.id });
-  }
-
-  function handleLogin(event) {
-    event.preventDefault();
-    setAuthError("");
-    const form = new FormData(event.currentTarget);
-    const email = form.get("email").trim().toLowerCase();
-    const password = form.get("password");
-
-    const found = users.find((user) => user.email === email);
-    if (!found || found.password !== password) {
-      setAuthError("Napačen e-poštni naslov ali geslo.");
-      return;
-    }
-
-    setSession({ userId: found.id });
-  }
-
-  function handleLogout() {
-    setSession(null);
-    setSearchCity("");
-    setSearchResult(null);
-    setSearchWeather(null);
-    setFavoritesWeather({});
-  }
-
-  async function handleSearch(event) {
-    event.preventDefault();
-    setSearchResult(null);
-    setSearchWeather(null);
-    if (!searchCity.trim()) return;
+  async function runWeatherLookup(location) {
     setSearchStatus("loading");
+    setFavoriteAction("");
+
     try {
-      const location = await geocodeCity(searchCity.trim());
-      if (!location) {
-        setSearchStatus("notfound");
-        return;
-      }
-      const current = await fetchCurrentWeather(location);
+      const bundle = await fetchWeatherBundle(location);
       setSearchResult(location);
-      setSearchWeather(current);
+      setWeatherData(bundle);
       setSearchStatus("ready");
     } catch (error) {
       console.error(error);
@@ -219,253 +291,445 @@ export default function App() {
     }
   }
 
-  function handleAddFavorite() {
-    if (!activeUser || !searchResult) return;
-    const exists = activeUser.favorites.some(
-      (fav) => fav.name.toLowerCase() === searchResult.name.toLowerCase()
+  async function handleSearch(event) {
+    event.preventDefault();
+
+    if (!searchCity.trim()) {
+      setSearchStatus("idle");
+      return;
+    }
+
+    setWeatherData(null);
+    setSearchResult(null);
+    setSearchStatus("loading");
+
+    try {
+      const location = await geocodeCity(searchCity.trim());
+
+      if (!location) {
+        setSearchStatus("notfound");
+        return;
+      }
+
+      await runWeatherLookup(location);
+    } catch (error) {
+      console.error(error);
+      setSearchStatus("error");
+    }
+  }
+
+  async function handleAddFavorite() {
+    if (!user || !searchResult || !sanityClient) {
+      return;
+    }
+
+    if (!sanityWriteEnabled) {
+      setFavoriteAction("Manjka Sanity write token.");
+      return;
+    }
+
+    const duplicate = favorites.some(
+      (favorite) =>
+        favorite.cityName.toLowerCase() === searchResult.name.toLowerCase() &&
+        (favorite.country || "").toLowerCase() ===
+          (searchResult.country || "").toLowerCase()
     );
-    if (exists) return;
-    const updatedUser = {
-      ...activeUser,
-      favorites: [
-        ...activeUser.favorites,
-        {
-          name: searchResult.name,
-          country: searchResult.country,
-          latitude: searchResult.latitude,
-          longitude: searchResult.longitude
-        }
-      ]
-    };
-    setUsers((prev) => updateUser(prev, updatedUser));
+
+    if (duplicate) {
+      setFavoriteAction("Ta kraj je ze med priljubljenimi.");
+      return;
+    }
+
+    setFavoriteAction("Shranjujem kraj...");
+
+    try {
+      const documentId = favoriteDocumentId(
+        user.id,
+        searchResult.name,
+        searchResult.country
+      );
+
+      const created = await sanityClient.createIfNotExists({
+        _id: documentId,
+        _type: "favorite",
+        clerkUserId: user.id,
+        cityName: searchResult.name,
+        country: searchResult.country,
+        latitude: searchResult.latitude,
+        longitude: searchResult.longitude,
+        createdAt: new Date().toISOString()
+      });
+
+      setFavorites((current) => [created, ...current]);
+      setFavoriteAction("Kraj je dodan med priljubljene.");
+    } catch (error) {
+      console.error(error);
+      setFavoriteAction("Shranjevanje ni uspelo.");
+    }
   }
 
-  function handleRemoveFavorite(name) {
-    if (!activeUser) return;
-    const updatedUser = {
-      ...activeUser,
-      favorites: activeUser.favorites.filter((fav) => fav.name !== name)
-    };
-    setUsers((prev) => updateUser(prev, updatedUser));
+  async function handleRemoveFavorite(favoriteId) {
+    if (!sanityClient) {
+      return;
+    }
+
+    if (!sanityWriteEnabled) {
+      setFavoriteAction("Manjka Sanity write token.");
+      return;
+    }
+
+    setFavoriteAction("Brisem kraj...");
+
+    try {
+      await sanityClient.delete(favoriteId);
+      setFavorites((current) => current.filter((favorite) => favorite._id !== favoriteId));
+      setFavoriteAction("Kraj je odstranjen.");
+    } catch (error) {
+      console.error(error);
+      setFavoriteAction("Brisanje ni uspelo.");
+    }
   }
 
-  const searchWeatherLabel = searchWeather
-    ? weatherLabel(searchWeather.weathercode)
-    : null;
+  async function handleSelectFavorite(favorite) {
+    setSearchCity(favorite.cityName);
+    await runWeatherLookup({
+      name: favorite.cityName,
+      country: favorite.country,
+      latitude: favorite.latitude,
+      longitude: favorite.longitude
+    });
+  }
+
+  const currentWeather = weatherData?.current;
+  const forecast = weatherData?.forecast || [];
+  const weatherMeta = currentWeather
+    ? weatherLabel(currentWeather.weatherCode)
+    : weatherLabel(1);
 
   return (
     <div className="page">
-      <header className="hero">
-        <div>
+      <header className="app-header">
+        <div className="brand-block">
           <p className="eyebrow">WeatherHub</p>
-          <h1>Vreme, kjerkoli. Shranjeno, takoj, tvoje.</h1>
-          <p className="lead">
-            Hiter vpogled v trenutno vreme, priljubljeni kraji in personalizirana
-            izkušnja za registrirane uporabnike.
-          </p>
+          <h1>Vreme za danes in naprej.</h1>
         </div>
-        <div className="hero-card">
-          <p className="card-title">Trenutni fokus</p>
-          <div className="mini-stack">
-            <div>
-              <p className="muted">Lokacija</p>
-              <p className="strong">{searchResult?.name || "Ljubljana"}</p>
-            </div>
-            <div>
-              <p className="muted">Status</p>
-              <p className="strong">
-                {searchWeatherLabel?.label || "Jasno"}
+
+        <form className="header-search" onSubmit={handleSearch}>
+          <input
+            type="text"
+            placeholder="Poisci mesto ali obcino"
+            value={searchCity}
+            onChange={(event) => setSearchCity(event.target.value)}
+          />
+          <button type="submit">🔍</button>
+        </form>
+      </header>
+
+      <section className={`weather-hero weather-hero-${weatherMeta.tone}`}>
+        <div className="weather-hero-copy">
+          <p className="weather-kicker">Trenutno vreme</p>
+          <h2>
+            {searchResult
+              ? `${searchResult.name}${searchResult.country ? `, ${searchResult.country}` : ""}`
+              : "Izberi lokacijo"}
+          </h2>
+          <p className="weather-description">
+            {currentWeather ? weatherMeta.label : "Vnesi lokacijo in preveri trenutno stanje."}
+          </p>
+
+          <div className="weather-primary">
+            <WeatherIcon icon={weatherMeta.icon} tone={weatherMeta.tone} />
+            <div className="weather-primary-reading">
+              <p className="weather-temp-large">
+                {currentWeather ? formatTempByUnit(currentWeather.temperature, settings.units) : "--°C"}
               </p>
-            </div>
-            <div>
-              <p className="muted">Temperatura</p>
-              <p className="strong">
-                {searchWeather?.temperature != null
-                  ? `${Math.round(searchWeather.temperature)}°C`
-                  : "18°C"}
+              <p className="weather-subline">
+                Feels like:{" "}
+                {currentWeather
+                  ? formatTempByUnit(currentWeather.apparentTemperature, settings.units)
+                  : "--"}
+              </p>
+              <p className="weather-subline">
+                H:{" "}
+                {currentWeather
+                  ? formatTempByUnit(currentWeather.maxTemperature, settings.units)
+                  : "--"}{" "}
+                L:{" "}
+                {currentWeather
+                  ? formatTempByUnit(currentWeather.minTemperature, settings.units)
+                  : "--"}
               </p>
             </div>
           </div>
         </div>
-      </header>
 
-      <main className="grid">
-        <section className="panel">
-          <h2>Preveri vreme</h2>
-          <form onSubmit={handleSearch} className="search">
+        <div className="weather-hero-side">
+          <div className="hero-stats">
+            <div className="hero-stat">
+              <span>🌬️ Veter</span>
+              <strong>{currentWeather ? `${Math.round(currentWeather.windSpeed)} km/h` : "-"}</strong>
+            </div>
+            <div className="hero-stat">
+              <span>🧭 Smer</span>
+              <strong>{currentWeather ? formatDirection(currentWeather.windDirection) : "-"}</strong>
+            </div>
+            <div className="hero-stat">
+              <span>📍 Geo</span>
+              <strong>
+                {searchResult
+                  ? `${searchResult.latitude.toFixed(1)} / ${searchResult.longitude.toFixed(1)}`
+                  : "-"}
+              </strong>
+            </div>
+          </div>
+
+          <div className="hero-actions">
+            <SignedIn>
+              <button type="button" onClick={handleAddFavorite}>
+                ⭐ Dodaj med priljubljene
+              </button>
+            </SignedIn>
+            <SignedOut>
+              <p className="hint hero-hint">Prijavi se, da lahko shranjujes lokacije.</p>
+            </SignedOut>
+            {favoriteAction && <p className="status weather-note">{favoriteAction}</p>}
+            {searchStatus === "loading" && <p className="status weather-note">Nalagam podatke...</p>}
+            {searchStatus === "notfound" && (
+              <p className="status error weather-note">Lokacije nisem nasel.</p>
+            )}
+            {searchStatus === "error" && (
+              <p className="status error weather-note">Branje vremena ni uspelo.</p>
+            )}
+          </div>
+        </div>
+      </section>
+
+      <main className="content-grid">
+        <section className="panel compact-panel">
+          <div className="section-head">
+            <h3>Search + Favorites</h3>
+            <span className="section-meta">{favorites.length} krajev</span>
+          </div>
+
+          <form className="compact-search" onSubmit={handleSearch}>
             <input
               type="text"
-              placeholder="Vnesi mesto (npr. Maribor)"
+              placeholder="Vnesi lokacijo"
               value={searchCity}
               onChange={(event) => setSearchCity(event.target.value)}
             />
-            <button type="submit">Poišči</button>
+            <button type="submit">Poisci</button>
           </form>
-          <div className="status">
-            {searchStatus === "loading" && "Iščem podatke..."}
-            {searchStatus === "notfound" && "Mesta nisem našel. Poskusi znova."}
-            {searchStatus === "error" && "Prišlo je do napake. Poskusi znova."}
-          </div>
-          {searchResult && searchWeather && (
-            <div className="weather-card">
-              <div className="weather-main">
-                <span className="icon">{searchWeatherLabel.icon}</span>
-                <div>
-                  <p className="place">
-                    {searchResult.name}, {searchResult.country}
-                  </p>
-                  <p className="desc">{searchWeatherLabel.label}</p>
+
+          <div className="favorites-list">
+            {favorites.length === 0 && <p className="hint">Ni shranjenih lokacij.</p>}
+            {favorites.map((favorite) => {
+              const current = favoritesWeather[favorite._id];
+              const isActive =
+                searchResult?.name === favorite.cityName &&
+                searchResult?.country === favorite.country;
+
+              return (
+                <div
+                  className={`favorite-row ${isActive ? "favorite-row-active" : ""}`}
+                  key={`quick-${favorite._id}`}
+                >
+                  <div
+                    className="favorite-row-main"
+                    onClick={() => handleSelectFavorite(favorite)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        handleSelectFavorite(favorite);
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div>
+                      <p className="favorite-city">{favorite.cityName}</p>
+                      <p className="favorite-label">
+                        {current ? weatherLabel(current.weatherCode).label : "Brez podatkov"}
+                      </p>
+                    </div>
+                    <strong className="favorite-temp">
+                      {current ? formatTempByUnit(current.temperature, settings.units) : "--"}
+                    </strong>
+                  </div>
+                  <button
+                    className="remove-button"
+                    type="button"
+                    onClick={() => handleRemoveFavorite(favorite._id)}
+                  >
+                    ✕
+                  </button>
                 </div>
-              </div>
-              <div className="weather-meta">
-                <p>
-                  <span className="muted">Temperatura</span>
-                  <span>{Math.round(searchWeather.temperature)}°C</span>
-                </p>
-                <p>
-                  <span className="muted">Veter</span>
-                  <span>{Math.round(searchWeather.windspeed)} km/h</span>
-                </p>
-              </div>
-              {activeUser && (
-                <button className="ghost" onClick={handleAddFavorite}>
-                  Dodaj med priljubljene
-                </button>
-              )}
-              {!activeUser && (
-                <p className="hint">Prijavi se, da dodaš mesto med priljubljene.</p>
-              )}
-            </div>
-          )}
+              );
+            })}
+          </div>
         </section>
 
-        <section className="panel">
+        <section className="panel compact-panel">
           <div className="panel-head">
-            <h2>Profil uporabnika</h2>
-            {activeUser && (
-              <button className="ghost small" onClick={handleLogout}>
-                Odjava
-              </button>
-            )}
+            <div>
+              <h3>Uporabniski profil</h3>
+              <p className="muted profile-copy">
+                {user?.firstName ? `Pozdravljen, ${user.firstName}.` : "Profil uporabnika"}
+              </p>
+            </div>
+            <SignedIn>
+              <div className="user-badge">
+                <UserButton afterSignOutUrl="/" />
+              </div>
+            </SignedIn>
           </div>
 
-          {!activeUser && (
-            <div>
-              <div className="tabs">
-                <button
-                  className={authMode === "login" ? "active" : ""}
-                  onClick={() => setAuthMode("login")}
-                >
-                  Prijava
-                </button>
-                <button
-                  className={authMode === "register" ? "active" : ""}
-                  onClick={() => setAuthMode("register")}
-                >
-                  Registracija
-                </button>
+          <SignedOut>
+            <div className="auth-shell">
+              <p className="muted">Clerk upravlja registracijo, prijavo in sejo.</p>
+              <div className="cta-row">
+                <SignInButton mode="modal">
+                  <button type="button">Prijava</button>
+                </SignInButton>
+                <SignUpButton mode="modal">
+                  <button className="ghost" type="button">
+                    Registracija
+                  </button>
+                </SignUpButton>
               </div>
-              {authMode === "login" ? (
-                <form onSubmit={handleLogin} className="auth">
-                  <input name="email" type="email" placeholder="E-pošta" />
-                  <input name="password" type="password" placeholder="Geslo" />
-                  <button type="submit">Prijavi me</button>
-                </form>
-              ) : (
-                <form onSubmit={handleRegister} className="auth">
-                  <input name="name" type="text" placeholder="Ime in priimek" />
-                  <input name="email" type="email" placeholder="E-pošta" />
-                  <input name="password" type="password" placeholder="Geslo" />
-                  <button type="submit">Ustvari račun</button>
-                </form>
-              )}
-              {authError && <p className="status error">{authError}</p>}
-              <p className="hint">
-                Podatki se hranijo lokalno v brskalniku (demo).
-              </p>
             </div>
-          )}
+          </SignedOut>
 
-          {activeUser && (
-            <div className="profile">
-              <p className="welcome">Pozdravljen, {activeUser.name}.</p>
-              <p className="muted">
-                Tvoj seznam priljubljenih krajev je pripravljen za hiter pregled.
-              </p>
-              <div className="favorites">
-                {activeUser.favorites.length === 0 && (
-                  <p className="hint">Še nimaš shranjenih krajev.</p>
-                )}
-                {activeUser.favorites.map((fav) => {
-                  const current = favoritesWeather[fav.name];
-                  const label = current
-                    ? weatherLabel(current.weathercode)
-                    : null;
-                  return (
-                    <div className="favorite" key={fav.name}>
-                      <div>
-                        <p className="strong">
-                          {fav.name}
-                          {fav.country ? `, ${fav.country}` : ""}
-                        </p>
-                        <p className="muted">
-                          {label ? label.label : "Ni podatkov"}
-                        </p>
-                      </div>
-                      <div className="favorite-meta">
-                        <span>
-                          {current
-                            ? `${Math.round(current.temperature)}°C`
-                            : "—"}
-                        </span>
-                        <button
-                          className="ghost small"
-                          onClick={() => handleRemoveFavorite(fav.name)}
-                        >
-                          Odstrani
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-                {favoritesStatus === "loading" && (
-                  <p className="status">Osvežujem podatke...</p>
-                )}
+          <SignedIn>
+            <div className="settings-list">
+              <div className="setting-block">
+                <span className="setting-label">Enote</span>
+                <div className="segmented-control">
+                  <button
+                    className={settings.units === "C" ? "segment-active" : ""}
+                    type="button"
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        units: "C"
+                      }))
+                    }
+                  >
+                    °C
+                  </button>
+                  <button
+                    className={settings.units === "F" ? "segment-active" : ""}
+                    type="button"
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        units: "F"
+                      }))
+                    }
+                  >
+                    °F
+                  </button>
+                </div>
               </div>
+
+              <div className="setting-block">
+                <label className="setting-label" htmlFor="default-location">
+                  Privzeta lokacija
+                </label>
+                <select
+                  id="default-location"
+                  className="settings-select"
+                  value={settings.defaultLocationId}
+                  onChange={(event) =>
+                    setSettings((current) => ({
+                      ...current,
+                      defaultLocationId: event.target.value
+                    }))
+                  }
+                >
+                  <option value="">Brez privzete lokacije</option>
+                  {favorites.map((favorite) => (
+                    <option key={favorite._id} value={favorite._id}>
+                      {favorite.cityName}
+                      {favorite.country ? `, ${favorite.country}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="setting-block">
+                <span className="setting-label">Tema</span>
+                <div className="segmented-control">
+                  <button
+                    className={settings.theme === "light" ? "segment-active" : ""}
+                    type="button"
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        theme: "light"
+                      }))
+                    }
+                  >
+                    Light
+                  </button>
+                  <button
+                    className={settings.theme === "dark" ? "segment-active" : ""}
+                    type="button"
+                    onClick={() =>
+                      setSettings((current) => ({
+                        ...current,
+                        theme: "dark"
+                      }))
+                    }
+                  >
+                    Dark
+                  </button>
+                </div>
+              </div>
+
+              {favoritesStatus === "config-error" && (
+                <p className="status error">Sanity ni nastavljen.</p>
+              )}
+              {favoritesStatus === "error" && (
+                <p className="status error">Branje iz Sanity ni uspelo.</p>
+              )}
+
+              <SignOutButton>
+                <button className="signout-button" type="button">
+                  Odjava
+                </button>
+              </SignOutButton>
             </div>
-          )}
+          </SignedIn>
         </section>
       </main>
 
-      <section className="panel full">
-        <h2>Kako deluje</h2>
-        <div className="features">
-          <div>
-            <p className="strong">Registracija & prijava</p>
-            <p className="muted">
-              Ustvari račun in se varno prijavi v WeatherHub.
-            </p>
-          </div>
-          <div>
-            <p className="strong">Iskanje vremena</p>
-            <p className="muted">
-              Vnesi mesto in takoj dobi temperaturo, opis in ikono.
-            </p>
-          </div>
-          <div>
-            <p className="strong">Priljubljeni kraji</p>
-            <p className="muted">
-              Dodajaj in odstranjuj kraje za hitri pregled.
-            </p>
-          </div>
-          <div>
-            <p className="strong">Shranjeno v bazi</p>
-            <p className="muted">
-              Demo uporablja localStorage, pripravljen za priklop prave baze.
-            </p>
-          </div>
+      <section className="panel forecast-panel">
+        <div className="section-head">
+          <h3>Napoved</h3>
+          <span className="section-meta">Naslednjih 5 dni</span>
+        </div>
+
+        <div className="forecast-grid">
+          {forecast.length === 0 && <p className="hint">Forecast bo prikazan po izbiri lokacije.</p>}
+          {forecast.map((day) => {
+            const meta = weatherLabel(day.weatherCode);
+
+            return (
+              <div className="forecast-card" key={day.date}>
+                <p className="forecast-day">{formatDay(day.date)}</p>
+                <div className="forecast-icon">{meta.icon}</div>
+                <p className="forecast-temp">{formatTempByUnit(day.maxTemperature, settings.units)}</p>
+                <p className="forecast-low">L: {formatTempByUnit(day.minTemperature, settings.units)}</p>
+              </div>
+            );
+          })}
         </div>
       </section>
     </div>
   );
+}
+
+export default function App() {
+  return <AppContent />;
 }

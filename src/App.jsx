@@ -13,7 +13,12 @@ import { favoriteDocumentId, favoriteQuery } from "./lib/favorites";
 import { sanityClient, sanityConfigured, sanityWriteEnabled } from "./lib/sanity";
 import { loadSettings, SETTINGS_KEY } from "./lib/settings";
 import { emptySiteNotice, normalizeSiteNotice, siteNoticeQuery } from "./lib/siteNotice";
-import { fetchWeatherBundle, geocodeCity, weatherLabel } from "./lib/weather";
+import {
+  fetchWeatherBundle,
+  geocodeCity,
+  reverseGeocodeCity,
+  weatherLabel
+} from "./lib/weather";
 
 export default function App() {
   const { user, isLoaded } = useUser();
@@ -30,6 +35,8 @@ export default function App() {
   const [siteNotice, setSiteNotice] = useState(emptySiteNotice);
   const [noticeDraft, setNoticeDraft] = useState(emptySiteNotice);
   const [noticeStatus, setNoticeStatus] = useState("");
+  const [locationStatus, setLocationStatus] = useState("idle");
+  const [locationMessage, setLocationMessage] = useState("");
 
   useEffect(() => {
     function syncPathname() {
@@ -160,6 +167,90 @@ export default function App() {
       handleSelectFavorite(favorite);
     }
   }, [favorites, searchResult, settings.defaultLocationId]);
+
+  useEffect(() => {
+    if (searchResult || settings.defaultLocationId || !navigator.geolocation) {
+      if (!navigator.geolocation) {
+        setLocationStatus("unsupported");
+        setLocationMessage("Brskalnik ne podpira zaznave lokacije.");
+      }
+      return;
+    }
+
+    let cancelled = false;
+
+    setLocationStatus("requesting");
+    setLocationMessage("");
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        if (cancelled) {
+          return;
+        }
+
+        setLocationStatus("loading");
+
+        try {
+          let location;
+
+          try {
+            location = await reverseGeocodeCity(coords.latitude, coords.longitude);
+          } catch (error) {
+            console.error(error);
+            location = {
+              name: "Trenutna lokacija",
+              country: "",
+              latitude: coords.latitude,
+              longitude: coords.longitude
+            };
+            if (!cancelled) {
+              setLocationMessage("Mesta ni bilo mogoče določiti, vreme prikazujem po koordinatah.");
+            }
+          }
+
+          if (cancelled) {
+            return;
+          }
+
+          setSearchCity(location.name);
+          await runWeatherLookup(location);
+          setLocationStatus("granted");
+        } catch (error) {
+          console.error(error);
+          if (!cancelled) {
+            setLocationStatus("error");
+            setLocationMessage("Branje vremena za trenutno lokacijo ni uspelo.");
+          }
+        }
+      },
+      (error) => {
+        if (!cancelled) {
+          if (error.code === 1) {
+            setLocationStatus("denied");
+            setLocationMessage("Dostop do lokacije ni dovoljen.");
+          } else if (error.code === 2) {
+            setLocationStatus("error");
+            setLocationMessage("Trenutne lokacije ni bilo mogoče določiti.");
+          } else if (error.code === 3) {
+            setLocationStatus("error");
+            setLocationMessage("Zahteva za lokacijo je potekla.");
+          } else {
+            setLocationStatus("error");
+            setLocationMessage("Branje trenutne lokacije ni uspelo.");
+          }
+        }
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 600000
+      }
+    );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchResult, settings.defaultLocationId]);
 
   async function runWeatherLookup(location) {
     setSearchStatus("loading");
@@ -383,6 +474,8 @@ export default function App() {
       <WeatherHero
         currentWeather={currentWeather}
         favoriteAction={favoriteAction}
+        locationMessage={locationMessage}
+        locationStatus={locationStatus}
         onAddFavorite={handleAddFavorite}
         searchResult={searchResult}
         searchStatus={searchStatus}

@@ -5,6 +5,8 @@ import { formatDirection, formatTempByUnit } from "../lib/weather";
 export default function WeatherHero({
   currentWeather,
   favoriteAction,
+  locationMessage,
+  locationStatus,
   onAddFavorite,
   searchResult,
   searchStatus,
@@ -82,12 +84,26 @@ export default function WeatherHero({
             <p className="hint hero-hint">Prijavi se, da lahko shranjuješ lokacije.</p>
           </SignedOut>
           {favoriteAction && <p className="status weather-note">{favoriteAction}</p>}
+          {locationStatus === "requesting" && (
+            <p className="status weather-note">Brskalnik preverja dostop do tvoje lokacije...</p>
+          )}
+          {locationStatus === "loading" && (
+            <p className="status weather-note">Nalagam vreme za tvojo trenutno lokacijo...</p>
+          )}
+          {locationStatus === "denied" && <p className="status weather-note">{locationMessage}</p>}
           {searchStatus === "loading" && <p className="status weather-note">Nalagam podatke...</p>}
           {searchStatus === "notfound" && (
             <p className="status error weather-note">Lokacije nisem našel.</p>
           )}
           {searchStatus === "error" && (
             <p className="status error weather-note">Branje vremena ni uspelo.</p>
+          )}
+          {locationStatus === "error" && <p className="status error weather-note">{locationMessage}</p>}
+          {locationStatus === "unsupported" && (
+            <p className="status error weather-note">{locationMessage}</p>
+          )}
+          {locationStatus === "granted" && locationMessage && (
+            <p className="status weather-note">{locationMessage}</p>
           )}
         </div>
       </div>

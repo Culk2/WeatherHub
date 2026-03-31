@@ -73,6 +73,39 @@ export async function geocodeCity(city) {
   };
 }
 
+export async function reverseGeocodeCity(latitude, longitude) {
+  const params = new URLSearchParams({
+    lat: String(latitude),
+    lon: String(longitude),
+    format: "jsonv2",
+    "accept-language": "sl",
+    addressdetails: "1",
+    zoom: "10"
+  });
+
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/reverse?${params.toString()}`
+  );
+  if (!res.ok) throw new Error("Neuspešno branje trenutne lokacije.");
+  const data = await res.json();
+  const address = data.address || {};
+  const name =
+    address.city ||
+    address.town ||
+    address.village ||
+    address.municipality ||
+    address.county ||
+    data.name ||
+    "Trenutna lokacija";
+
+  return {
+    name,
+    country: address.country || "",
+    latitude,
+    longitude
+  };
+}
+
 export async function fetchWeatherBundle({ latitude, longitude }) {
   const params = new URLSearchParams({
     latitude: String(latitude),

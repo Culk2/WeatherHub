@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useUser } from "@clerk/clerk-react";
 import AdminAccessDenied from "./components/AdminAccessDenied";
 import AdminPage from "./components/AdminPage";
@@ -37,6 +37,7 @@ export default function App() {
   const [noticeStatus, setNoticeStatus] = useState("");
   const [locationStatus, setLocationStatus] = useState("idle");
   const [locationMessage, setLocationMessage] = useState("");
+  const hasUserChosenLocationRef = useRef(false);
 
   useEffect(() => {
     function syncPathname() {
@@ -169,7 +170,12 @@ export default function App() {
   }, [favorites, searchResult, settings.defaultLocationId]);
 
   useEffect(() => {
-    if (searchResult || settings.defaultLocationId || !navigator.geolocation) {
+    if (
+      searchResult ||
+      settings.defaultLocationId ||
+      hasUserChosenLocationRef.current ||
+      !navigator.geolocation
+    ) {
       if (!navigator.geolocation) {
         setLocationStatus("unsupported");
         setLocationMessage("Brskalnik ne podpira zaznave lokacije.");
@@ -179,7 +185,7 @@ export default function App() {
 
     let cancelled = false;
 
-    handleUseCurrentLocation(cancelled);
+    handleUseCurrentLocation({ cancelledRef: () => cancelled, isAutomatic: true });
 
     return () => {
       cancelled = true;
@@ -203,6 +209,7 @@ export default function App() {
 
   async function handleSearch(event) {
     event.preventDefault();
+    hasUserChosenLocationRef.current = true;
 
     if (!searchCity.trim()) {
       setSearchStatus("idle");
@@ -301,6 +308,7 @@ export default function App() {
   }
 
   async function handleSelectFavorite(favorite) {
+    hasUserChosenLocationRef.current = true;
     setSearchCity(favorite.cityName);
     await runWeatherLookup({
       name: favorite.cityName,
@@ -310,7 +318,11 @@ export default function App() {
     });
   }
 
-  function handleUseCurrentLocation(cancelledRef = false) {
+  function handleUseCurrentLocation({ cancelledRef = () => false, isAutomatic = false } = {}) {
+    if (!isAutomatic) {
+      hasUserChosenLocationRef.current = true;
+    }
+
     if (!navigator.geolocation) {
       setLocationStatus("unsupported");
       setLocationMessage("Brskalnik ne podpira zaznave lokacije.");
@@ -322,7 +334,7 @@ export default function App() {
 
     navigator.geolocation.getCurrentPosition(
       async ({ coords }) => {
-        if (cancelledRef) {
+        if (cancelledRef()) {
           return;
         }
 
@@ -341,12 +353,16 @@ export default function App() {
               latitude: coords.latitude,
               longitude: coords.longitude
             };
-            if (!cancelledRef) {
+            if (!cancelledRef()) {
               setLocationMessage("Mesta ni bilo mogoče določiti, vreme prikazujem po koordinatah.");
             }
           }
 
-          if (cancelledRef) {
+          if (cancelledRef()) {
+            return;
+          }
+
+          if (isAutomatic && hasUserChosenLocationRef.current) {
             return;
           }
 
@@ -354,14 +370,14 @@ export default function App() {
           setLocationStatus("granted");
         } catch (error) {
           console.error(error);
-          if (!cancelledRef) {
+          if (!cancelledRef()) {
             setLocationStatus("error");
             setLocationMessage("Branje vremena za trenutno lokacijo ni uspelo.");
           }
         }
       },
       (error) => {
-        if (!cancelledRef) {
+        if (!cancelledRef()) {
           if (error.code === 1) {
             setLocationStatus("denied");
             setLocationMessage("Dostop do lokacije ni dovoljen.");

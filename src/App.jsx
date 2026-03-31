@@ -1,16 +1,22 @@
 import { useEffect, useState } from "react";
 import { useUser } from "@clerk/clerk-react";
+import AdminAccessDenied from "./components/AdminAccessDenied";
+import AdminPage from "./components/AdminPage";
 import FavoritesPanel from "./components/FavoritesPanel";
 import ForecastPanel from "./components/ForecastPanel";
 import ProfilePanel from "./components/ProfilePanel";
+import SiteNotice from "./components/SiteNotice";
 import WeatherHero from "./components/WeatherHero";
+import { hasAdminGuardConfigured, isAdminUser } from "./lib/admin";
 import { favoriteDocumentId, favoriteQuery } from "./lib/favorites";
 import { sanityClient, sanityConfigured, sanityWriteEnabled } from "./lib/sanity";
 import { loadSettings, SETTINGS_KEY } from "./lib/settings";
+import { emptySiteNotice, normalizeSiteNotice, siteNoticeQuery } from "./lib/siteNotice";
 import { fetchWeatherBundle, geocodeCity, weatherLabel } from "./lib/weather";
 
 export default function App() {
   const { user, isLoaded } = useUser();
+  const [pathname, setPathname] = useState(window.location.pathname);
   const [searchCity, setSearchCity] = useState("");
   const [searchResult, setSearchResult] = useState(null);
   const [weatherData, setWeatherData] = useState(null);
@@ -20,6 +26,20 @@ export default function App() {
   const [favoritesWeather, setFavoritesWeather] = useState({});
   const [favoriteAction, setFavoriteAction] = useState("");
   const [settings, setSettings] = useState(loadSettings);
+  const [siteNotice, setSiteNotice] = useState(emptySiteNotice);
+  const [noticeDraft, setNoticeDraft] = useState(emptySiteNotice);
+  const [noticeStatus, setNoticeStatus] = useState("");
+
+  useEffect(() => {
+    function syncPathname() {
+      setPathname(window.location.pathname);
+    }
+
+    window.addEventListener("popstate", syncPathname);
+    return () => {
+      window.removeEventListener("popstate", syncPathname);
+    };
+  }, []);
 
   useEffect(() => {
     if (!isLoaded || !user) {
@@ -66,6 +86,36 @@ export default function App() {
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     document.documentElement.dataset.theme = settings.theme;
   }, [settings]);
+
+  useEffect(() => {
+    if (!sanityConfigured || !sanityClient) {
+      setSiteNotice(emptySiteNotice);
+      setNoticeDraft(emptySiteNotice);
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadSiteNotice() {
+      try {
+        const result = await sanityClient.fetch(siteNoticeQuery);
+        const normalized = normalizeSiteNotice(result);
+
+        if (!cancelled) {
+          setSiteNotice(normalized);
+          setNoticeDraft(normalized);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    loadSiteNotice();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (!favorites.length) {
@@ -241,11 +291,71 @@ export default function App() {
     }));
   }
 
+  function updateNoticeDraft(patch) {
+    setNoticeDraft((current) => ({
+      ...current,
+      ...patch
+    }));
+  }
+
+  async function handleSaveNotice() {
+    if (!sanityClient || !sanityWriteEnabled) {
+      setNoticeStatus("Shranjevanje ni možno brez Sanity write tokena.");
+      return;
+    }
+
+    setNoticeStatus("Shranjujem obvestilo...");
+
+    try {
+      const nextNotice = {
+        _id: "site-notice",
+        _type: "siteNotice",
+        title: noticeDraft.title.trim(),
+        message: noticeDraft.message.trim(),
+        isActive: noticeDraft.isActive,
+        updatedAt: new Date().toISOString()
+      };
+
+      await sanityClient.createOrReplace(nextNotice);
+      const normalized = normalizeSiteNotice(nextNotice);
+      setSiteNotice(normalized);
+      setNoticeDraft(normalized);
+      setNoticeStatus("Obvestilo je shranjeno.");
+    } catch (error) {
+      console.error(error);
+      setNoticeStatus("Shranjevanje obvestila ni uspelo.");
+    }
+  }
+
   const currentWeather = weatherData?.current;
   const forecast = weatherData?.forecast || [];
   const weatherMeta = currentWeather
     ? weatherLabel(currentWeather.weatherCode)
     : weatherLabel(1);
+  const hasAdminAccess = isAdminUser(user);
+  const adminGuardConfigured = hasAdminGuardConfigured();
+
+  if (pathname === "/admin") {
+    if (!hasAdminAccess) {
+      return (
+        <AdminAccessDenied
+          hasGuardConfigured={adminGuardConfigured}
+          isLoaded={isLoaded}
+          isSignedIn={Boolean(user)}
+        />
+      );
+    }
+
+    return (
+      <AdminPage
+        noticeDraft={noticeDraft}
+        noticeStatus={noticeStatus}
+        onDraftChange={updateNoticeDraft}
+        onSave={handleSaveNotice}
+        sanityConfigured={sanityConfigured}
+      />
+    );
+  }
 
   return (
     <div className="page">
@@ -296,6 +406,8 @@ export default function App() {
           user={user}
         />
       </main>
+
+      <SiteNotice notice={siteNotice} />
     </div>
   );
 }

@@ -67,6 +67,13 @@ input {
   align-items: center;
 }
 
+.admin-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+}
+
 .brand-block h1 {
   margin: 0;
   font-size: clamp(2rem, 4vw, 3rem);
@@ -135,6 +142,10 @@ button.ghost:hover {
   border: 1px solid rgba(226, 232, 240, 0.9);
   border-radius: 28px;
   box-shadow: var(--shadow);
+}
+
+.admin-panel {
+  padding: 24px;
 }
 
 .weather-hero {
@@ -468,6 +479,49 @@ button.ghost:hover {
   width: fit-content;
 }
 
+.admin-back {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+}
+
+.admin-form {
+  display: grid;
+  gap: 16px;
+}
+
+.settings-textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: #f8fbff;
+  color: var(--text-primary);
+  border-radius: 16px;
+  padding: 14px 16px;
+  outline: none;
+  resize: vertical;
+  font: inherit;
+}
+
+.notice-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.notice-toggle input {
+  width: auto;
+}
+
+.admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
 .auth-shell {
   display: grid;
   gap: 14px;
@@ -523,6 +577,31 @@ button.ghost:hover {
   margin-top: 6px;
   color: var(--text-secondary);
   font-size: 0.92rem;
+}
+
+.site-notice {
+  padding: 22px 24px;
+  border-color: rgba(249, 115, 22, 0.24);
+  background: linear-gradient(180deg, #fff8f1 0%, #ffffff 100%);
+}
+
+.site-notice-kicker {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+}
+
+.site-notice h3 {
+  margin: 0 0 10px;
+}
+
+.site-notice-copy {
+  margin: 0;
+  color: var(--text-secondary);
+  line-height: 1.6;
 }
 
 .code-block {

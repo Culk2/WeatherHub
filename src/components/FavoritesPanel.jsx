@@ -26,7 +26,7 @@ export default function FavoritesPanel({
           return (
             <div
               className={`favorite-row ${isActive ? "favorite-row-active" : ""}`}
-              key={`quick-${favorite._id}`}
+              key={favorite._id}
             >
               <div
                 className="favorite-row-main"
@@ -50,6 +50,7 @@ export default function FavoritesPanel({
                   {current ? formatTempByUnit(current.temperature, settings.units) : "--"}
                 </strong>
               </div>
+
               <button
                 className="remove-button"
                 type="button"

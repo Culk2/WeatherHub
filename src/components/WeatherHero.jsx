@@ -80,9 +80,11 @@ export default function WeatherHero({
               ⭐ Dodaj med priljubljene
             </button>
           </SignedIn>
+
           <SignedOut>
             <p className="hint hero-hint">Prijavi se, da lahko shranjuješ lokacije.</p>
           </SignedOut>
+
           {favoriteAction && <p className="status weather-note">{favoriteAction}</p>}
           {locationStatus === "requesting" && (
             <p className="status weather-note">Brskalnik preverja dostop do tvoje lokacije...</p>

@@ -14,7 +14,7 @@ export default function AdminPage({
           <p className="eyebrow">WeatherHub Admin</p>
           <h1>Upravljanje obvestila</h1>
           <p className="muted">
-            Tukaj lahko nastaviš globalno obvestilo, ki se pokaže uporabnikom na dnu strani.
+            Tukaj lahko nastaviš globalno obvestilo, ki se pokaže uporabnikom na vrhu strani.
           </p>
         </div>
         <Link className="ghost admin-back" href="/">

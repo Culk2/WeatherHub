@@ -57,14 +57,18 @@ export async function geocodeCity(city) {
     city
   )}&count=1&language=sl&format=json`;
   const res = await fetch(url);
-  if (!res.ok) throw new Error("Neuspešno iskanje mesta.");
-  const data = await res.json();
 
-  if (!data.results || data.results.length === 0) {
+  if (!res.ok) {
+    throw new Error("Neuspešno iskanje mesta.");
+  }
+
+  const data = await res.json();
+  const result = data.results?.[0];
+
+  if (!result) {
     return null;
   }
 
-  const result = data.results[0];
   return {
     name: result.name,
     country: result.country,
@@ -86,7 +90,11 @@ export async function reverseGeocodeCity(latitude, longitude) {
   const res = await fetch(
     `https://nominatim.openstreetmap.org/reverse?${params.toString()}`
   );
-  if (!res.ok) throw new Error("Neuspešno branje trenutne lokacije.");
+
+  if (!res.ok) {
+    throw new Error("Neuspešno branje trenutne lokacije.");
+  }
+
   const data = await res.json();
   const address = data.address || {};
   const name =
@@ -136,7 +144,11 @@ export async function fetchWeatherBundle({ latitude, longitude }) {
   });
 
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
-  if (!res.ok) throw new Error("Neuspešno branje vremena.");
+
+  if (!res.ok) {
+    throw new Error("Neuspešno branje vremena.");
+  }
+
   const data = await res.json();
 
   return {

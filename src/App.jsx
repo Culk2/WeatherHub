@@ -20,6 +20,15 @@ import {
   weatherLabel
 } from "./lib/weather";
 
+function fallbackLocationFromCoords(latitude, longitude) {
+  return {
+    name: "Trenutna lokacija",
+    country: "",
+    latitude,
+    longitude
+  };
+}
+
 export default function App() {
   const { user, isLoaded } = useUser();
   const [pathname, setPathname] = useState(window.location.pathname);
@@ -51,6 +60,11 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+    document.documentElement.dataset.theme = settings.theme;
+  }, [settings]);
+
+  useEffect(() => {
     if (!isLoaded || !user) {
       setFavorites([]);
       setFavoritesWeather({});
@@ -67,6 +81,7 @@ export default function App() {
 
     async function loadFavorites() {
       setFavoritesStatus("loading");
+
       try {
         const result = await sanityClient.fetch(favoriteQuery, {
           clerkUserId: user.id
@@ -90,11 +105,6 @@ export default function App() {
       cancelled = true;
     };
   }, [isLoaded, user]);
-
-  useEffect(() => {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    document.documentElement.dataset.theme = settings.theme;
-  }, [settings]);
 
   useEffect(() => {
     if (!sanityConfigured || !sanityClient) {
@@ -185,7 +195,10 @@ export default function App() {
 
     let cancelled = false;
 
-    handleUseCurrentLocation({ cancelledRef: () => cancelled, isAutomatic: true });
+    handleUseCurrentLocation({
+      cancelledRef: () => cancelled,
+      isAutomatic: true
+    });
 
     return () => {
       cancelled = true;
@@ -260,14 +273,8 @@ export default function App() {
     setFavoriteAction("Shranjujem kraj...");
 
     try {
-      const documentId = favoriteDocumentId(
-        user.id,
-        searchResult.name,
-        searchResult.country
-      );
-
       const created = await sanityClient.createIfNotExists({
-        _id: documentId,
+        _id: favoriteDocumentId(user.id, searchResult.name, searchResult.country),
         _type: "favorite",
         clerkUserId: user.id,
         cityName: searchResult.name,
@@ -310,12 +317,36 @@ export default function App() {
   async function handleSelectFavorite(favorite) {
     hasUserChosenLocationRef.current = true;
     setSearchCity(favorite.cityName);
+
     await runWeatherLookup({
       name: favorite.cityName,
       country: favorite.country,
       latitude: favorite.latitude,
       longitude: favorite.longitude
     });
+  }
+
+  function handleGeolocationError(errorCode) {
+    if (errorCode === 1) {
+      setLocationStatus("denied");
+      setLocationMessage("Dostop do lokacije ni dovoljen.");
+      return;
+    }
+
+    if (errorCode === 2) {
+      setLocationStatus("error");
+      setLocationMessage("Trenutne lokacije ni bilo mogoče določiti.");
+      return;
+    }
+
+    if (errorCode === 3) {
+      setLocationStatus("error");
+      setLocationMessage("Zahteva za lokacijo je potekla.");
+      return;
+    }
+
+    setLocationStatus("error");
+    setLocationMessage("Branje trenutne lokacije ni uspelo.");
   }
 
   function handleUseCurrentLocation({ cancelledRef = () => false, isAutomatic = false } = {}) {
@@ -347,22 +378,13 @@ export default function App() {
             location = await reverseGeocodeCity(coords.latitude, coords.longitude);
           } catch (error) {
             console.error(error);
-            location = {
-              name: "Trenutna lokacija",
-              country: "",
-              latitude: coords.latitude,
-              longitude: coords.longitude
-            };
+            location = fallbackLocationFromCoords(coords.latitude, coords.longitude);
             if (!cancelledRef()) {
               setLocationMessage("Mesta ni bilo mogoče določiti, vreme prikazujem po koordinatah.");
             }
           }
 
-          if (cancelledRef()) {
-            return;
-          }
-
-          if (isAutomatic && hasUserChosenLocationRef.current) {
+          if (cancelledRef() || (isAutomatic && hasUserChosenLocationRef.current)) {
             return;
           }
 
@@ -378,19 +400,7 @@ export default function App() {
       },
       (error) => {
         if (!cancelledRef()) {
-          if (error.code === 1) {
-            setLocationStatus("denied");
-            setLocationMessage("Dostop do lokacije ni dovoljen.");
-          } else if (error.code === 2) {
-            setLocationStatus("error");
-            setLocationMessage("Trenutne lokacije ni bilo mogoče določiti.");
-          } else if (error.code === 3) {
-            setLocationStatus("error");
-            setLocationMessage("Zahteva za lokacijo je potekla.");
-          } else {
-            setLocationStatus("error");
-            setLocationMessage("Branje trenutne lokacije ni uspelo.");
-          }
+          handleGeolocationError(error.code);
         }
       },
       {
@@ -434,6 +444,7 @@ export default function App() {
       };
 
       await sanityClient.createOrReplace(nextNotice);
+
       const normalized = normalizeSiteNotice(nextNotice);
       setSiteNotice(normalized);
       setNoticeDraft(normalized);
@@ -450,14 +461,12 @@ export default function App() {
   const weatherMeta = currentWeather
     ? weatherLabel(currentWeather.weatherCode)
     : weatherLabel(1);
-  const hasAdminAccess = isAdminUser(user);
-  const adminGuardConfigured = hasAdminGuardConfigured();
 
   if (pathname === "/admin") {
-    if (!hasAdminAccess) {
+    if (!isAdminUser(user)) {
       return (
         <AdminAccessDenied
-          hasGuardConfigured={adminGuardConfigured}
+          hasGuardConfigured={hasAdminGuardConfigured()}
           isLoaded={isLoaded}
           isSignedIn={Boolean(user)}
         />
@@ -518,7 +527,6 @@ export default function App() {
       />
 
       <HourlyForecastPanel hourly={hourly} settings={settings} />
-
       <ForecastPanel forecast={forecast} settings={settings} />
 
       <main className="content-grid">

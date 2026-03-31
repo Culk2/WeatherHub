@@ -4,6 +4,7 @@ import AdminAccessDenied from "./components/AdminAccessDenied";
 import AdminPage from "./components/AdminPage";
 import FavoritesPanel from "./components/FavoritesPanel";
 import ForecastPanel from "./components/ForecastPanel";
+import HourlyForecastPanel from "./components/HourlyForecastPanel";
 import ProfilePanel from "./components/ProfilePanel";
 import SiteNotice from "./components/SiteNotice";
 import WeatherHero from "./components/WeatherHero";
@@ -329,6 +330,7 @@ export default function App() {
 
   const currentWeather = weatherData?.current;
   const forecast = weatherData?.forecast || [];
+  const hourly = weatherData?.hourly || [];
   const weatherMeta = currentWeather
     ? weatherLabel(currentWeather.weatherCode)
     : weatherLabel(1);
@@ -385,6 +387,8 @@ export default function App() {
         settings={settings}
         weatherMeta={weatherMeta}
       />
+
+      <HourlyForecastPanel hourly={hourly} settings={settings} />
 
       <ForecastPanel forecast={forecast} settings={settings} />
 

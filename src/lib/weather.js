@@ -21,6 +21,10 @@ const weatherCodeMap = {
 };
 
 const weekdayFormatter = new Intl.DateTimeFormat("sl-SI", { weekday: "short" });
+const hourFormatter = new Intl.DateTimeFormat("sl-SI", {
+  hour: "2-digit",
+  minute: "2-digit"
+});
 
 export function weatherLabel(code) {
   return weatherCodeMap[code] || { label: "Neznano", icon: "❔", tone: "cloudy" };
@@ -42,6 +46,10 @@ export function formatDirection(value) {
 export function formatDay(date) {
   const parts = weekdayFormatter.format(new Date(date)).replace(".", "");
   return parts.charAt(0).toUpperCase() + parts.slice(1);
+}
+
+export function formatHour(date) {
+  return hourFormatter.format(new Date(date));
 }
 
 export async function geocodeCity(city) {
@@ -83,6 +91,13 @@ export async function fetchWeatherBundle({ latitude, longitude }) {
       "apparent_temperature_max",
       "apparent_temperature_min"
     ].join(","),
+    hourly: [
+      "temperature_2m",
+      "apparent_temperature",
+      "weather_code",
+      "precipitation_probability",
+      "wind_speed_10m"
+    ].join(","),
     forecast_days: "5",
     timezone: "auto"
   });
@@ -107,6 +122,14 @@ export async function fetchWeatherBundle({ latitude, longitude }) {
       weatherCode: data.daily.weather_code?.[index],
       maxTemperature: data.daily.temperature_2m_max?.[index],
       minTemperature: data.daily.temperature_2m_min?.[index]
+    })),
+    hourly: (data.hourly?.time || []).slice(0, 24).map((time, index) => ({
+      time,
+      temperature: data.hourly.temperature_2m?.[index],
+      apparentTemperature: data.hourly.apparent_temperature?.[index],
+      weatherCode: data.hourly.weather_code?.[index],
+      precipitationProbability: data.hourly.precipitation_probability?.[index],
+      windSpeed: data.hourly.wind_speed_10m?.[index]
     }))
   };
 }

@@ -58,6 +58,7 @@ input {
   padding: 28px 20px 56px;
   display: grid;
   gap: 24px;
+  overflow-x: hidden;
 }
 
 .app-header {
@@ -308,8 +309,10 @@ button.ghost:hover {
 }
 
 .compact-panel,
-.forecast-panel {
+.forecast-panel,
+.hourly-panel {
   padding: 24px;
+  overflow: hidden;
 }
 
 .section-head,
@@ -544,6 +547,60 @@ button.ghost:hover {
   gap: 14px;
 }
 
+.hourly-scroll {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(37, 99, 235, 0.35) transparent;
+}
+
+.hourly-row {
+  display: flex;
+  gap: 12px;
+  width: max-content;
+  min-width: 100%;
+}
+
+.hourly-card {
+  min-width: 152px;
+  padding: 16px 14px;
+  border-radius: 22px;
+  background: linear-gradient(180deg, #f8fbff 0%, #eef5fc 100%);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.hourly-time,
+.hourly-temp,
+.hourly-meta {
+  margin: 0;
+}
+
+.hourly-time {
+  color: var(--text-secondary);
+  font-weight: 700;
+  font-size: 0.92rem;
+}
+
+.hourly-icon {
+  margin: 12px 0 8px;
+  font-size: 1.8rem;
+}
+
+.hourly-temp {
+  font-size: 1.15rem;
+  font-weight: 800;
+}
+
+.hourly-meta {
+  margin-top: 6px;
+  color: var(--text-secondary);
+  font-size: 0.84rem;
+}
+
 .forecast-card {
   padding: 18px 16px;
   border-radius: 22px;
@@ -623,6 +680,7 @@ button.ghost:hover {
   .forecast-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+
 }
 
 @media (max-width: 640px) {
@@ -650,5 +708,9 @@ button.ghost:hover {
 
   .forecast-grid {
     grid-template-columns: 1fr;
+  }
+
+  .hourly-card {
+    min-width: 142px;
   }
 }

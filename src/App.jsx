@@ -179,72 +179,7 @@ export default function App() {
 
     let cancelled = false;
 
-    setLocationStatus("requesting");
-    setLocationMessage("");
-
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords }) => {
-        if (cancelled) {
-          return;
-        }
-
-        setLocationStatus("loading");
-
-        try {
-          let location;
-
-          try {
-            location = await reverseGeocodeCity(coords.latitude, coords.longitude);
-          } catch (error) {
-            console.error(error);
-            location = {
-              name: "Trenutna lokacija",
-              country: "",
-              latitude: coords.latitude,
-              longitude: coords.longitude
-            };
-            if (!cancelled) {
-              setLocationMessage("Mesta ni bilo mogoče določiti, vreme prikazujem po koordinatah.");
-            }
-          }
-
-          if (cancelled) {
-            return;
-          }
-
-          await runWeatherLookup(location);
-          setLocationStatus("granted");
-        } catch (error) {
-          console.error(error);
-          if (!cancelled) {
-            setLocationStatus("error");
-            setLocationMessage("Branje vremena za trenutno lokacijo ni uspelo.");
-          }
-        }
-      },
-      (error) => {
-        if (!cancelled) {
-          if (error.code === 1) {
-            setLocationStatus("denied");
-            setLocationMessage("Dostop do lokacije ni dovoljen.");
-          } else if (error.code === 2) {
-            setLocationStatus("error");
-            setLocationMessage("Trenutne lokacije ni bilo mogoče določiti.");
-          } else if (error.code === 3) {
-            setLocationStatus("error");
-            setLocationMessage("Zahteva za lokacijo je potekla.");
-          } else {
-            setLocationStatus("error");
-            setLocationMessage("Branje trenutne lokacije ni uspelo.");
-          }
-        }
-      },
-      {
-        enableHighAccuracy: false,
-        timeout: 10000,
-        maximumAge: 600000
-      }
-    );
+    handleUseCurrentLocation(cancelled);
 
     return () => {
       cancelled = true;
@@ -375,6 +310,81 @@ export default function App() {
     });
   }
 
+  function handleUseCurrentLocation(cancelledRef = false) {
+    if (!navigator.geolocation) {
+      setLocationStatus("unsupported");
+      setLocationMessage("Brskalnik ne podpira zaznave lokacije.");
+      return;
+    }
+
+    setLocationStatus("requesting");
+    setLocationMessage("");
+
+    navigator.geolocation.getCurrentPosition(
+      async ({ coords }) => {
+        if (cancelledRef) {
+          return;
+        }
+
+        setLocationStatus("loading");
+
+        try {
+          let location;
+
+          try {
+            location = await reverseGeocodeCity(coords.latitude, coords.longitude);
+          } catch (error) {
+            console.error(error);
+            location = {
+              name: "Trenutna lokacija",
+              country: "",
+              latitude: coords.latitude,
+              longitude: coords.longitude
+            };
+            if (!cancelledRef) {
+              setLocationMessage("Mesta ni bilo mogoče določiti, vreme prikazujem po koordinatah.");
+            }
+          }
+
+          if (cancelledRef) {
+            return;
+          }
+
+          await runWeatherLookup(location);
+          setLocationStatus("granted");
+        } catch (error) {
+          console.error(error);
+          if (!cancelledRef) {
+            setLocationStatus("error");
+            setLocationMessage("Branje vremena za trenutno lokacijo ni uspelo.");
+          }
+        }
+      },
+      (error) => {
+        if (!cancelledRef) {
+          if (error.code === 1) {
+            setLocationStatus("denied");
+            setLocationMessage("Dostop do lokacije ni dovoljen.");
+          } else if (error.code === 2) {
+            setLocationStatus("error");
+            setLocationMessage("Trenutne lokacije ni bilo mogoče določiti.");
+          } else if (error.code === 3) {
+            setLocationStatus("error");
+            setLocationMessage("Zahteva za lokacijo je potekla.");
+          } else {
+            setLocationStatus("error");
+            setLocationMessage("Branje trenutne lokacije ni uspelo.");
+          }
+        }
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 10000,
+        maximumAge: 600000
+      }
+    );
+  }
+
   function updateSettings(patch) {
     setSettings((current) => ({
       ...current,
@@ -457,15 +467,24 @@ export default function App() {
           <h1>Vreme za danes in naprej.</h1>
         </div>
 
-        <form className="header-search" onSubmit={handleSearch}>
-          <input
-            type="text"
-            placeholder="Poišči mesto ali občino"
-            value={searchCity}
-            onChange={(event) => setSearchCity(event.target.value)}
-          />
-          <button type="submit">🔍</button>
-        </form>
+        <div className="header-actions">
+          <form className="header-search" onSubmit={handleSearch}>
+            <input
+              type="text"
+              placeholder="Poišči mesto ali občino"
+              value={searchCity}
+              onChange={(event) => setSearchCity(event.target.value)}
+            />
+            <button type="submit">🔍</button>
+          </form>
+          <button
+            className="location-button"
+            type="button"
+            onClick={() => handleUseCurrentLocation()}
+          >
+            📍 Moja lokacija
+          </button>
+        </div>
       </header>
 
       <SiteNotice notice={siteNotice} />

@@ -68,6 +68,11 @@ input {
   align-items: center;
 }
 
+.header-actions {
+  display: grid;
+  gap: 10px;
+}
+
 .admin-header {
   display: flex;
   justify-content: space-between;
@@ -136,6 +141,17 @@ button.ghost {
 button.ghost:hover {
   background: rgba(249, 115, 22, 0.08);
   transform: none;
+}
+
+.location-button {
+  background: transparent;
+  color: var(--primary);
+  border-color: rgba(37, 99, 235, 0.22);
+}
+
+.location-button:hover {
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--primary);
 }
 
 .panel {

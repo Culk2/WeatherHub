@@ -378,6 +378,8 @@ export default function App() {
         </form>
       </header>
 
+      <SiteNotice notice={siteNotice} />
+
       <WeatherHero
         currentWeather={currentWeather}
         favoriteAction={favoriteAction}
@@ -410,8 +412,6 @@ export default function App() {
           user={user}
         />
       </main>
-
-      <SiteNotice notice={siteNotice} />
     </div>
   );
 }

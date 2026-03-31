@@ -212,7 +212,6 @@ export default function App() {
             return;
           }
 
-          setSearchCity(location.name);
           await runWeatherLookup(location);
           setLocationStatus("granted");
         } catch (error) {

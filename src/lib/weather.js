@@ -1,23 +1,23 @@
-const weatherCodeMap = {
-  0: { label: "Jasno", icon: "☀️", tone: "sunny" },
-  1: { label: "Pretežno jasno", icon: "🌤️", tone: "sunny" },
-  2: { label: "Delno oblačno", icon: "⛅", tone: "cloudy" },
-  3: { label: "Oblačno", icon: "☁️", tone: "cloudy" },
-  45: { label: "Megla", icon: "🌫️", tone: "cloudy" },
-  48: { label: "Megla z ivjem", icon: "🌫️", tone: "cloudy" },
-  51: { label: "Rahlo rosenje", icon: "🌦️", tone: "rainy" },
-  53: { label: "Zmerno rosenje", icon: "🌦️", tone: "rainy" },
-  55: { label: "Močno rosenje", icon: "🌧️", tone: "rainy" },
-  61: { label: "Rahel dež", icon: "🌦️", tone: "rainy" },
-  63: { label: "Zmeren dež", icon: "🌧️", tone: "rainy" },
-  65: { label: "Močan dež", icon: "⛈️", tone: "rainy" },
-  71: { label: "Rahel sneg", icon: "🌨️", tone: "cloudy" },
-  73: { label: "Zmeren sneg", icon: "🌨️", tone: "cloudy" },
-  75: { label: "Močan sneg", icon: "❄️", tone: "cloudy" },
-  80: { label: "Kratek naliv", icon: "🌧️", tone: "rainy" },
-  81: { label: "Nalivi", icon: "⛈️", tone: "rainy" },
-  82: { label: "Močni nalivi", icon: "⛈️", tone: "rainy" },
-  95: { label: "Nevihta", icon: "⛈️", tone: "rainy" }
+﻿const weatherCodeMap = {
+  0: { label: "Jasno", icon: "\u2600\uFE0F", tone: "sunny" },
+  1: { label: "Pretezno jasno", icon: "\uD83C\uDF24\uFE0F", tone: "sunny" },
+  2: { label: "Delno oblacno", icon: "\u26C5", tone: "cloudy" },
+  3: { label: "Oblacno", icon: "\u2601\uFE0F", tone: "cloudy" },
+  45: { label: "Megla", icon: "\uD83C\uDF2B\uFE0F", tone: "cloudy" },
+  48: { label: "Megla z ivjem", icon: "\uD83C\uDF2B\uFE0F", tone: "cloudy" },
+  51: { label: "Rahlo rosenje", icon: "\uD83C\uDF26\uFE0F", tone: "rainy" },
+  53: { label: "Zmerno rosenje", icon: "\uD83C\uDF26\uFE0F", tone: "rainy" },
+  55: { label: "Mocno rosenje", icon: "\uD83C\uDF27\uFE0F", tone: "rainy" },
+  61: { label: "Rahel dez", icon: "\uD83C\uDF26\uFE0F", tone: "rainy" },
+  63: { label: "Zmeren dez", icon: "\uD83C\uDF27\uFE0F", tone: "rainy" },
+  65: { label: "Mocan dez", icon: "\u26C8\uFE0F", tone: "rainy" },
+  71: { label: "Rahel sneg", icon: "\uD83C\uDF28\uFE0F", tone: "cloudy" },
+  73: { label: "Zmeren sneg", icon: "\uD83C\uDF28\uFE0F", tone: "cloudy" },
+  75: { label: "Mocan sneg", icon: "\u2744\uFE0F", tone: "cloudy" },
+  80: { label: "Kratek naliv", icon: "\uD83C\uDF27\uFE0F", tone: "rainy" },
+  81: { label: "Nalivi", icon: "\u26C8\uFE0F", tone: "rainy" },
+  82: { label: "Mocni nalivi", icon: "\u26C8\uFE0F", tone: "rainy" },
+  95: { label: "Nevihta", icon: "\u26C8\uFE0F", tone: "rainy" }
 };
 
 const weekdayFormatter = new Intl.DateTimeFormat("sl-SI", { weekday: "short" });
@@ -27,20 +27,21 @@ const hourFormatter = new Intl.DateTimeFormat("sl-SI", {
 });
 
 export function weatherLabel(code) {
-  return weatherCodeMap[code] || { label: "Neznano", icon: "❔", tone: "cloudy" };
+  return weatherCodeMap[code] || { label: "Neznano", icon: "?", tone: "cloudy" };
 }
 
 export function formatTempByUnit(value, unit) {
   if (value == null) return "-";
   if (unit === "F") {
-    return `${Math.round((value * 9) / 5 + 32)}°F`;
+    return `${Math.round((value * 9) / 5 + 32)}\u00B0F`;
   }
-  return `${Math.round(value)}°C`;
+
+  return `${Math.round(value)}\u00B0C`;
 }
 
 export function formatDirection(value) {
   if (value == null) return "-";
-  return `${Math.round(value)}°`;
+  return `${Math.round(value)}\u00B0`;
 }
 
 export function formatDay(date) {
@@ -52,6 +53,17 @@ export function formatHour(date) {
   return hourFormatter.format(new Date(date));
 }
 
+function getTwelveMonthRange() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+  const end = new Date(now);
+
+  return {
+    startDate: start.toISOString().slice(0, 10),
+    endDate: end.toISOString().slice(0, 10)
+  };
+}
+
 export async function geocodeCity(city) {
   const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(
     city
@@ -59,7 +71,7 @@ export async function geocodeCity(city) {
   const res = await fetch(url);
 
   if (!res.ok) {
-    throw new Error("Neuspešno iskanje mesta.");
+    throw new Error("Neuspesno iskanje mesta.");
   }
 
   const data = await res.json();
@@ -92,7 +104,7 @@ export async function reverseGeocodeCity(latitude, longitude) {
   );
 
   if (!res.ok) {
-    throw new Error("Neuspešno branje trenutne lokacije.");
+    throw new Error("Neuspesno branje trenutne lokacije.");
   }
 
   const data = await res.json();
@@ -146,7 +158,11 @@ export async function fetchWeatherBundle({ latitude, longitude }) {
   const res = await fetch(`https://api.open-meteo.com/v1/forecast?${params.toString()}`);
 
   if (!res.ok) {
-    throw new Error("Neuspešno branje vremena.");
+    if (res.status >= 500) {
+      throw new Error("Vremenski API trenutno ne odgovarja.");
+    }
+
+    throw new Error("Neuspesno branje vremena.");
   }
 
   const data = await res.json();
@@ -176,5 +192,62 @@ export async function fetchWeatherBundle({ latitude, longitude }) {
       precipitationProbability: data.hourly.precipitation_probability?.[index],
       windSpeed: data.hourly.wind_speed_10m?.[index]
     }))
+  };
+}
+
+export async function fetchPreviousMonthPrecipitation({ latitude, longitude }) {
+  const { startDate, endDate } = getTwelveMonthRange();
+  const params = new URLSearchParams({
+    latitude: String(latitude),
+    longitude: String(longitude),
+    start_date: startDate,
+    end_date: endDate,
+    daily: "precipitation_sum,precipitation_hours",
+    timezone: "auto"
+  });
+
+  const res = await fetch(`https://archive-api.open-meteo.com/v1/archive?${params.toString()}`);
+
+  if (!res.ok) {
+    throw new Error("Neuspesno branje zgodovine padavin.");
+  }
+
+  const data = await res.json();
+  const days = (data.daily?.time || []).map((date, index) => ({
+    date,
+    precipitationSum: data.daily.precipitation_sum?.[index] ?? 0,
+    precipitationHours: data.daily.precipitation_hours?.[index] ?? 0
+  }));
+
+  const monthsMap = new Map();
+
+  days.forEach((day) => {
+    const monthKey = day.date.slice(0, 7);
+    const current = monthsMap.get(monthKey) || {
+      key: monthKey,
+      date: `${monthKey}-01`,
+      precipitationSum: 0,
+      precipitationHours: 0
+    };
+
+    current.precipitationSum += day.precipitationSum;
+    current.precipitationHours += day.precipitationHours;
+    monthsMap.set(monthKey, current);
+  });
+
+  const months = Array.from(monthsMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+  const totalPrecipitation = months.reduce((sum, month) => sum + month.precipitationSum, 0);
+  const wettestMonth = months.reduce(
+    (best, month) =>
+      month.precipitationSum > (best?.precipitationSum ?? -1) ? month : best,
+    null
+  );
+
+  return {
+    startDate,
+    endDate,
+    months,
+    totalPrecipitation,
+    wettestMonth
   };
 }

@@ -8,6 +8,7 @@ export default function WeatherHero({
   locationMessage,
   locationStatus,
   onAddFavorite,
+  onOpenPrecipitationModal,
   searchResult,
   searchStatus,
   settings,
@@ -32,10 +33,10 @@ export default function WeatherHero({
             <p className="weather-temp-large">
               {currentWeather
                 ? formatTempByUnit(currentWeather.temperature, settings.units)
-                : "--°C"}
+                : "--�C"}
             </p>
             <p className="weather-subline">
-              Občutek:{" "}
+              Obcutek:{" "}
               {currentWeather
                 ? formatTempByUnit(currentWeather.apparentTemperature, settings.units)
                 : "--"}
@@ -75,6 +76,16 @@ export default function WeatherHero({
         </div>
 
         <div className="hero-actions">
+          {searchResult && (
+            <button
+              className="secondary-hero-button"
+              type="button"
+              onClick={onOpenPrecipitationModal}
+            >
+              Graf padavin
+            </button>
+          )}
+
           <SignedIn>
             <button type="button" onClick={onAddFavorite}>
               ⭐ Dodaj med priljubljene
@@ -82,7 +93,7 @@ export default function WeatherHero({
           </SignedIn>
 
           <SignedOut>
-            <p className="hint hero-hint">Prijavi se, da lahko shranjuješ lokacije.</p>
+            <p className="hint hero-hint">Prijavi se, da lahko shranjuje� lokacije.</p>
           </SignedOut>
 
           {favoriteAction && <p className="status weather-note">{favoriteAction}</p>}
@@ -95,7 +106,7 @@ export default function WeatherHero({
           {locationStatus === "denied" && <p className="status weather-note">{locationMessage}</p>}
           {searchStatus === "loading" && <p className="status weather-note">Nalagam podatke...</p>}
           {searchStatus === "notfound" && (
-            <p className="status error weather-note">Lokacije nisem našel.</p>
+            <p className="status error weather-note">Lokacije nisem na�el.</p>
           )}
           {searchStatus === "error" && (
             <p className="status error weather-note">Branje vremena ni uspelo.</p>

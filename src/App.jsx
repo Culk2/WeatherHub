@@ -5,6 +5,7 @@ import AdminPage from "./components/AdminPage";
 import FavoritesPanel from "./components/FavoritesPanel";
 import ForecastPanel from "./components/ForecastPanel";
 import HourlyForecastPanel from "./components/HourlyForecastPanel";
+import PrecipitationHistoryPanel from "./components/PrecipitationHistoryPanel";
 import ProfilePanel from "./components/ProfilePanel";
 import SiteNotice from "./components/SiteNotice";
 import WeatherHero from "./components/WeatherHero";
@@ -14,6 +15,7 @@ import { sanityClient, sanityConfigured, sanityWriteEnabled } from "./lib/sanity
 import { loadSettings, SETTINGS_KEY } from "./lib/settings";
 import { emptySiteNotice, normalizeSiteNotice, siteNoticeQuery } from "./lib/siteNotice";
 import {
+  fetchPreviousMonthPrecipitation,
   fetchWeatherBundle,
   geocodeCity,
   reverseGeocodeCity,
@@ -46,6 +48,9 @@ export default function App() {
   const [noticeStatus, setNoticeStatus] = useState("");
   const [locationStatus, setLocationStatus] = useState("idle");
   const [locationMessage, setLocationMessage] = useState("");
+  const [precipitationHistory, setPrecipitationHistory] = useState(null);
+  const [precipitationStatus, setPrecipitationStatus] = useState("idle");
+  const [isPrecipitationModalOpen, setIsPrecipitationModalOpen] = useState(false);
   const hasUserChosenLocationRef = useRef(false);
 
   useEffect(() => {
@@ -204,6 +209,57 @@ export default function App() {
       cancelled = true;
     };
   }, [searchResult, settings.defaultLocationId]);
+
+  useEffect(() => {
+    if (!searchResult) {
+      setPrecipitationHistory(null);
+      setPrecipitationStatus("idle");
+      return;
+    }
+
+    let cancelled = false;
+
+    async function loadPrecipitationHistory() {
+      setPrecipitationStatus("loading");
+
+      try {
+        const history = await fetchPreviousMonthPrecipitation(searchResult);
+
+        if (!cancelled) {
+          setPrecipitationHistory(history);
+          setPrecipitationStatus("ready");
+        }
+      } catch (error) {
+        console.error(error);
+        if (!cancelled) {
+          setPrecipitationStatus("error");
+        }
+      }
+    }
+
+    loadPrecipitationHistory();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [searchResult]);
+
+  useEffect(() => {
+    if (!isPrecipitationModalOpen) {
+      return undefined;
+    }
+
+    function handleEscape(event) {
+      if (event.key === "Escape") {
+        setIsPrecipitationModalOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isPrecipitationModalOpen]);
 
   async function runWeatherLookup(location) {
     setSearchStatus("loading");
@@ -520,6 +576,7 @@ export default function App() {
         locationMessage={locationMessage}
         locationStatus={locationStatus}
         onAddFavorite={handleAddFavorite}
+        onOpenPrecipitationModal={() => setIsPrecipitationModalOpen(true)}
         searchResult={searchResult}
         searchStatus={searchStatus}
         settings={settings}
@@ -547,6 +604,38 @@ export default function App() {
           user={user}
         />
       </main>
+
+      {isPrecipitationModalOpen && (
+        <div
+          className="modal-overlay"
+          onClick={() => setIsPrecipitationModalOpen(false)}
+          role="presentation"
+        >
+          <div
+            className="modal-card"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="precipitation-modal-title"
+          >
+            <div className="modal-head">
+              <h2 id="precipitation-modal-title">Graf padavin</h2>
+              <button
+                className="modal-close"
+                type="button"
+                onClick={() => setIsPrecipitationModalOpen(false)}
+                aria-label="Zapri okno"
+              >
+                ×
+              </button>
+            </div>
+            <PrecipitationHistoryPanel
+              history={precipitationHistory}
+              status={precipitationStatus}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
